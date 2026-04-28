@@ -4,17 +4,22 @@ from app.models.state import QueueState, MeasurementResult, UserContext
 
 
 class MockStateService:
+    """
+    Mock backend for GUI testing only.
+    Later this can be replaced with a real shared-folder / supervisor-backed service.
+    """
+
     def __init__(self):
         self.state = QueueState()
 
     def get_state(self) -> QueueState:
         return self.state
 
-    def reserve_ports(self, user: UserContext, ports: int) -> tuple[bool, str]:
+    def reserve_ports(self, user: UserContext, ports: int):
         if ports <= 0:
             return False, "Ports must be greater than 0."
 
-        # device already owned by someone else
+        # Device already reserved by another user
         if self.state.owner_user and self.state.owner_user != user.username:
             return False, f"Device is currently being used by '{self.state.owner_user}'."
 
@@ -29,7 +34,7 @@ class MockStateService:
 
         return True, "Reservation successful."
 
-    def release_queue(self, user: UserContext) -> tuple[bool, str]:
+    def release_queue(self, user: UserContext):
         if not self.state.owner_user:
             return False, "No active owner."
 
@@ -39,14 +44,14 @@ class MockStateService:
         self._reset_state()
         return True, "Queue released."
 
-    def force_release(self, user: UserContext) -> tuple[bool, str]:
+    def force_release(self, user: UserContext):
         if not user.is_admin:
             return False, "You are not allowed to force release."
 
         self._reset_state()
         return True, "Queue force released."
 
-    def simulate_port_consumed(self, user: UserContext) -> tuple[bool, str]:
+    def simulate_port_consumed(self, user: UserContext):
         if self.state.owner_user != user.username and not user.is_admin:
             return False, "Only the owner (or admin) can simulate progress."
 
@@ -72,13 +77,14 @@ class MockStateService:
         self.state.recent_results.insert(0, result)
 
         if self.state.remaining_ports == 0:
-            self.state.message = "All reserved ports have been used."
-            self.state.device_status = "free"
-            self.state.owner_user = ""
-            self.state.queue_locked = False
-            self.state.reserved_ports = 0
+            finished_user = self.state.owner_user
+            self._reset_state()
+            self.state.message = f"All reserved ports for {finished_user} have been used. Device is now free."
         else:
-            self.state.message = f"Measurement completed on port {port_number}. {self.state.remaining_ports} port(s) remaining."
+            self.state.message = (
+                f"Measurement completed on port {port_number}. "
+                f"{self.state.remaining_ports} port(s) remaining."
+            )
 
         return True, "Simulated one completed measurement."
 

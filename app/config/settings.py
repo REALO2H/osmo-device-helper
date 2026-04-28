@@ -1,13 +1,14 @@
 APP_TITLE = "OSMO Device Helper"
-REFRESH_INTERVAL_MS = 1000
+THEME_NAME = "superhero" 
+REFRESH_INTERVAL_MS = 200
+WORKER_POLL_INTERVAL_SEC = 1.0
 
-# usernames that should be treated as admins
-# TODO: it will be later changed to OT/ADM CASES.
+# Simple admin list for testing
 ADMIN_USERS = {
     "administrator",
     "admin",
     "labadmin",
 }
 
-# For demo/testing only:
+# Demo / mock user
 MOCK_OTHER_USER = "other.operator"
