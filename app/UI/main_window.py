@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QMessag
 from app.config.settings import APP_TITLE
 from app.services.auth_service import AuthService
 from app.services.mock_state_service import MockStateService
-from app.ui.panels import StatusPanel, ControlPanel, ResultsPanel, LogPanel
+from app.UI.panels import StatusPanel, ControlPanel, ResultsPanel, LogPanel
 
 
 class MainWindow(QMainWindow):
