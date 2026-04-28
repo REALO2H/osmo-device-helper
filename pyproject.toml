@@ -1,0 +1,5 @@
+[project]
+name = "osmo-device-helper"
+version = "0.1.0"
+description = "Helper GUI for OSMO device reservation"
+requires-python = ">=3.11"
