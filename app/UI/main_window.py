@@ -9,7 +9,7 @@ from ttkbootstrap.constants import *
 from app.services.auth_service import AuthService
 from app.services.mock_state_service import MockStateService
 from app.services.worker_service import WorkerService
-from app.config.settings import REFRESH_INTERVAL_MS
+from app.config.settings import REFRESH_INTERVAL_MS, MAX_PORTS, PORT_GRID_COLUMNS
 from app.UI import styles
 
 
@@ -33,6 +33,25 @@ class MainWindow(ttk.Frame):
         self.refresh_view(self.state_service.get_state())
 
         self.master.protocol("WM_DELETE_WINDOW", self._on_close)
+
+
+    def _update_visual_metrics(self, state):
+        reserved = int(state.reserved_ports or 0)
+        used = int(state.used_ports or 0)
+
+        # Progress bar
+        if reserved > 0:
+            progress = int((used / reserved) * 100)
+        else:
+            progress = 0
+
+        self.queue_progress.configure(value=progress)
+        self.progress_value_label.configure(text=f"{progress}%")
+
+        # 24-port visual grid
+        for i, box in enumerate(self.port_boxes):
+            style = styles.port_bootstyle(i, used, reserved)
+            box.configure(bootstyle=style)
 
     # --------------------------------------------------
     # Layout
@@ -81,11 +100,74 @@ class MainWindow(ttk.Frame):
         for i in range(5):
             self.status_frame.columnconfigure(i, weight=1)
 
+
+        # ------------------------------------------
+        # Visual Metrics
+        # ------------------------------------------
+        self.metrics_frame = ttk.Labelframe(self, text="Visual Metrics", padding=14)
+        self.metrics_frame.pack(fill=X, pady=(0, 12))
+
+        # Queue utilization progress bar
+        self.progress_label = ttk.Label(
+            self.metrics_frame,
+            text="Queue Utilization",
+            font=styles.SUBTITLE_FONT,
+        )
+        self.progress_label.grid(row=0, column=0, sticky="w", padx=(0, 10))
+
+        self.queue_progress = ttk.Progressbar(
+            self.metrics_frame,
+            length=400,
+            maximum=100,
+            value=0,
+            bootstyle="success-striped"
+        )
+        self.queue_progress.grid(row=0, column=1, sticky="ew", padx=(0, 10))
+
+        self.progress_value_label = ttk.Label(
+            self.metrics_frame,
+            text="0%",
+            font=styles.SUBTITLE_FONT
+        )
+        self.progress_value_label.grid(row=0, column=2, sticky="e")
+
+        # 24-port grid
+        self.port_grid_frame = ttk.Frame(self.metrics_frame)
+        self.port_grid_frame.grid(row=1, column=0, columnspan=3, sticky="ew", pady=(14, 0))
+
+        self.port_boxes = []
+        for i in range(MAX_PORTS):
+            row = i // PORT_GRID_COLUMNS
+            col = i % PORT_GRID_COLUMNS
+
+            box = ttk.Label(
+                self.port_grid_frame,
+                text=f"{i+1:02d}",
+                width=5,
+                anchor="center",
+                padding=(6, 6),
+                bootstyle="secondary"
+            )
+            box.grid(row=row, column=col, padx=4, pady=4, sticky="nsew")
+            self.port_boxes.append(box)
+
+        for c in range(PORT_GRID_COLUMNS):
+            self.port_grid_frame.columnconfigure(c, weight=1)
+
+        self.metrics_frame.columnconfigure(1, weight=1)
+
         # Actions
         self.actions_frame = ttk.Labelframe(self, text="Actions", padding=14)
         self.actions_frame.pack(fill=X, pady=(0, 12))
 
-        self.port_var = tk.IntVar(value=1)
+        self.port_var = tk.IntVar(master=self,value=1)
+        self.port_spin = ttk.Spinbox(
+            self.actions_frame,
+            from_=1,
+            to=MAX_PORTS,
+            textvariable=self.port_var,
+            width=8
+        )
 
         ttk.Label(self.actions_frame, text="Ports to reserve:").grid(row=0, column=0, sticky="w", padx=(0, 10))
         self.port_spin = ttk.Spinbox(self.actions_frame, from_=1, to=100, textvariable=self.port_var, width=8)
@@ -166,6 +248,8 @@ class MainWindow(ttk.Frame):
         self.log_text.pack(fill=BOTH, expand=YES)
         self.log_text.configure(state="disabled")
 
+
+
     def _create_kpi_box(self, master, title, column):
         frame = ttk.Frame(master, padding=14)
         frame.grid(row=0, column=column, padx=6, pady=6, sticky="nsew")
@@ -228,6 +312,7 @@ class MainWindow(ttk.Frame):
         self.used_box["value"].configure(text=str(state.used_ports))
         self.remaining_box["value"].configure(text=str(state.remaining_ports))
         self.message_label.configure(text=state.message or "-")
+        self._update_visual_metrics(state)
 
         self._refresh_results(state.recent_results)
 
@@ -275,12 +360,22 @@ class MainWindow(ttk.Frame):
         except Exception:
             messagebox.showwarning("Invalid Input", "Please enter a valid number of ports.")
             return
+        
+
+        if ports < 1 or ports > MAX_PORTS:
+            messagebox.showwarning(
+                "Invalid Input",
+                f"Please enter a number of ports between 1 and {MAX_PORTS}."
+            )
+            return
 
         ok, msg = self.state_service.reserve_ports(self.user, ports)
         if not ok:
             messagebox.showwarning("Reserve Failed", msg)
 
         self.log(msg)
+
+
 
     def on_release(self):
         ok, msg = self.state_service.release_queue(self.user)

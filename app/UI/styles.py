@@ -19,3 +19,17 @@ def status_bootstyle(device_status: str) -> str:
     if status == "error":
         return "danger"
     return "secondary"
+
+
+def port_bootstyle(index: int, used_ports: int, reserved_ports: int) -> str:
+    """
+    Returns the visual style for each of the 24 port boxes:
+    - used ports: green
+    - reserved but not used yet: yellow
+    - free/unreserved: gray
+    """
+    if index < used_ports:
+        return "success"
+    if index < reserved_ports:
+        return "warning"
+    return "secondary"

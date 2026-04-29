@@ -1,5 +1,5 @@
 from datetime import datetime
-from app.config.settings import MOCK_OTHER_USER
+from app.config.settings import MOCK_OTHER_USER, MAX_PORTS
 from app.models.state import QueueState, MeasurementResult, UserContext
 
 
@@ -15,9 +15,13 @@ class MockStateService:
     def get_state(self) -> QueueState:
         return self.state
 
+    
     def reserve_ports(self, user: UserContext, ports: int):
         if ports <= 0:
             return False, "Ports must be greater than 0."
+
+        if ports > MAX_PORTS:
+            return False, f"You cannot reserve more than {MAX_PORTS} ports."
 
         # Device already reserved by another user
         if self.state.owner_user and self.state.owner_user != user.username:
@@ -33,6 +37,7 @@ class MockStateService:
         self.state.recent_results = []
 
         return True, "Reservation successful."
+
 
     def release_queue(self, user: UserContext):
         if not self.state.owner_user:
